@@ -2,6 +2,8 @@ const {
   getGroup,
   createGroupWithMembers,
   createExpenseForGroup,
+  getExpensesForGroup,
+  calculateGroupBalances,
 } = require("../services/groupService");
 
 async function fetchGroup(req, res) {
@@ -74,7 +76,7 @@ async function createExpense(req, res) {
     res.status(201).json({
       message: "Expense created successfully",
       expense: result.expense,
-      splits: result.splitsData,
+      splits: result.splits,
     });
   } catch (err) {
     console.error("Error creating expense:", err);
@@ -87,4 +89,50 @@ async function createExpense(req, res) {
   }
 }
 
-module.exports = { fetchGroup, createGroup, createExpense };
+async function fetchExpenses(req, res) {
+  try {
+    const groupId = req.params.id;
+    const expenses = await getExpensesForGroup(groupId);
+
+    res.status(200).json({
+      message: "Expenses fetched successfully",
+      expenses,
+    });
+  } catch (err) {
+    console.error("Error fetching expenses:", err);
+
+    if (err && err.status && err.message) {
+      return res.status(err.status).json({ message: err.message });
+    }
+
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+async function fetchBalances(req, res) {
+  try {
+    const groupId = req.params.id;
+    const balances = await calculateGroupBalances(groupId);
+
+    res.status(200).json({
+      message: "Balances calculated successfully",
+      balances,
+    });
+  } catch (err) {
+    console.error("Error calculating balances:", err);
+
+    if (err && err.status && err.message) {
+      return res.status(err.status).json({ message: err.message });
+    }
+
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+module.exports = {
+  fetchGroup,
+  createGroup,
+  createExpense,
+  fetchExpenses,
+  fetchBalances,
+};

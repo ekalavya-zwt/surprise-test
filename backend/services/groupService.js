@@ -6,6 +6,8 @@ const {
   sequelize,
 } = require("../models");
 
+const { splitAmount } = require("../utils/equalSplitAmount");
+
 async function getGroup(groupId) {
   return await Groups.findByPk(groupId, {
     attributes: ["id", "name", "description"],
@@ -43,18 +45,9 @@ async function createGroupWithMembers(groupData, membersData) {
   }
 }
 
-function equalSplitAmount(totalAmount, memberCount) {
-  const baseShare = Math.floor(totalAmount / memberCount);
-  const remainder = totalAmount - baseShare * memberCount;
-
-  return Array.from(
-    { length: memberCount },
-    (_, index) => baseShare + (index < remainder ? 1 : 0),
-  );
-}
-
 async function createExpenseForGroup(groupId, expenseData) {
-  const { paid_by, amount, description, split_type, date } = expenseData;
+  const { paid_by, amount, description, split_type, date, splits } =
+    expenseData;
 
   if (!paid_by || !amount || !description || !split_type || !date) {
     throw {
@@ -64,10 +57,14 @@ async function createExpenseForGroup(groupId, expenseData) {
     };
   }
 
-  if (split_type !== "equal") {
+  if (
+    split_type !== "equal" &&
+    split_type !== "exact" &&
+    split_type !== "percentage"
+  ) {
     throw {
       status: 400,
-      message: "Only split_type 'equal' is supported",
+      message: "split_type must be 'equal', 'exact', or 'percentage'",
     };
   }
 
@@ -111,7 +108,131 @@ async function createExpenseForGroup(groupId, expenseData) {
     throw { status: 400, message: "Amount must be greater than 0" };
   }
 
-  const sharedAmount = equalSplitAmount(totalAmount, members.length);
+  let splitsData;
+
+  if (split_type === "equal") {
+    const sharedAmount = splitAmount(totalAmount, members.length);
+    splitsData = members.map((member, index) => ({
+      expenseId: null,
+      memberId: member.id,
+      amountOwed: (sharedAmount[index] / 100).toFixed(2),
+    }));
+  } else if (split_type === "exact") {
+    if (!splits || typeof splits !== "object") {
+      throw {
+        status: 400,
+        message: "splits object is required for exact split type",
+      };
+    }
+
+    const memberIds = members.map((member) => member.id);
+    const splitMemberIds = Object.keys(splits).map((id) => Number(id));
+
+    const invalidMemberIds = splitMemberIds.filter(
+      (id) => !memberIds.includes(id),
+    );
+    if (invalidMemberIds.length > 0) {
+      throw {
+        status: 400,
+        message: `Invalid member IDs in splits: ${invalidMemberIds.join(", ")}`,
+      };
+    }
+
+    const missingMemberIds = memberIds.filter(
+      (id) => !splitMemberIds.includes(id),
+    );
+    if (missingMemberIds.length > 0) {
+      throw {
+        status: 400,
+        message: `Missing splits for member IDs: ${missingMemberIds.join(", ")}`,
+      };
+    }
+
+    const splitsTotal = Object.values(splits).reduce(
+      (sum, value) => sum + Number(value),
+      0,
+    );
+
+    if (Math.abs(splitsTotal - Number(amount)) > 0.01) {
+      throw {
+        status: 400,
+        message: `Split amounts sum to ${splitsTotal}, but total amount is ${amount}`,
+      };
+    }
+
+    splitsData = memberIds.map((memberId) => ({
+      expenseId: null,
+      memberId,
+      amountOwed: Number(splits[memberId]).toFixed(2),
+    }));
+  } else if (split_type === "percentage") {
+    if (!splits || typeof splits !== "object") {
+      throw {
+        status: 400,
+        message: "splits object is required for percentage split type",
+      };
+    }
+
+    const memberIds = members.map((member) => member.id);
+    const splitMemberIds = Object.keys(splits).map((id) => Number(id));
+
+    const invalidMemberIds = splitMemberIds.filter(
+      (id) => !memberIds.includes(id),
+    );
+    if (invalidMemberIds.length > 0) {
+      throw {
+        status: 400,
+        message: `Invalid member IDs in splits: ${invalidMemberIds.join(", ")}`,
+      };
+    }
+
+    const missingMemberIds = memberIds.filter(
+      (id) => !splitMemberIds.includes(id),
+    );
+    if (missingMemberIds.length > 0) {
+      throw {
+        status: 400,
+        message: `Missing splits for member IDs: ${missingMemberIds.join(", ")}`,
+      };
+    }
+
+    const percentagesTotal = Object.values(splits).reduce(
+      (sum, value) => sum + Number(value),
+      0,
+    );
+
+    if (Math.abs(percentagesTotal - 100) > 0.01) {
+      throw {
+        status: 400,
+        message: `Percentages sum to ${percentagesTotal}, but must sum to exactly 100`,
+      };
+    }
+
+    const percentageAmounts = memberIds.map((memberId) => {
+      const percentage = Number(splits[memberId]);
+      return Math.round((totalAmount * percentage) / 100);
+    });
+
+    const calculatedTotal = percentageAmounts.reduce(
+      (sum, amount) => sum + amount,
+      0,
+    );
+    const remainder = totalAmount - calculatedTotal;
+
+    for (let i = 0; i < Math.abs(remainder); i++) {
+      if (remainder > 0) {
+        percentageAmounts[i]++;
+      } else {
+        percentageAmounts[i]--;
+      }
+    }
+
+    splitsData = memberIds.map((memberId, index) => ({
+      expenseId: null,
+      memberId,
+      amountOwed: (percentageAmounts[index] / 100).toFixed(2),
+    }));
+  }
 
   return await sequelize.transaction(async (transaction) => {
     const expense = await Expenses.create(
@@ -126,23 +247,161 @@ async function createExpenseForGroup(groupId, expenseData) {
       { transaction },
     );
 
-    const splitsData = members.map((member, index) => ({
-      expenseId: expense.id,
-      memberId: member.id,
-      amountOwed: (sharedAmount[index] / 100).toFixed(2),
-    }));
+    splitsData.forEach((split) => {
+      split.expenseId = expense.id;
+    });
 
     await ExpenseSplits.bulkCreate(splitsData, { transaction });
 
     return {
-      expense,
-      splitsData,
+      expense: expense.toJSON(),
+      splits: splitsData,
     };
   });
+}
+
+async function getExpensesForGroup(groupId) {
+  const group = await Groups.findByPk(groupId);
+  if (!group) {
+    throw { status: 404, message: "Group not found" };
+  }
+
+  const expenses = await Expenses.findAll({
+    where: { groupId },
+    include: [
+      {
+        model: Members,
+        as: "payer",
+        attributes: ["id", "name", "email"],
+      },
+      {
+        model: ExpenseSplits,
+        as: "splits",
+        attributes: ["id", "memberId", "amountOwed"],
+        include: {
+          model: Members,
+          as: "member",
+          attributes: ["id", "name", "email"],
+        },
+        separate: true,
+        order: [["memberId", "ASC"]],
+      },
+    ],
+    order: [
+      ["date", "DESC"],
+      ["id", "DESC"],
+    ],
+  });
+
+  return expenses.map((expense) => ({
+    id: expense.id,
+    groupId: expense.groupId,
+    paidBy: expense.paidBy,
+    payer: expense.payer,
+    amount: expense.amount,
+    description: expense.description,
+    splitType: expense.splitType,
+    date: expense.date,
+    createdAt: expense.createdAt,
+    updatedAt: expense.updatedAt,
+    splits: expense.splits.map((split) => ({
+      id: split.id,
+      memberId: split.memberId,
+      member: split.member,
+      amountOwed: split.amountOwed,
+    })),
+  }));
+}
+
+async function calculateGroupBalances(groupId) {
+  const group = await Groups.findByPk(groupId, {
+    include: {
+      model: Members,
+      as: "members",
+      attributes: ["id", "name"],
+      separate: true,
+      order: [["id", "ASC"]],
+    },
+  });
+
+  if (!group) {
+    throw { status: 404, message: "Group not found" };
+  }
+
+  const members = group.members;
+  if (!members || members.length === 0) {
+    throw { status: 400, message: "Group must have members" };
+  }
+
+  const expenses = await Expenses.findAll({
+    where: { groupId },
+    attributes: ["id", "paidBy", "amount"],
+    include: [
+      {
+        model: ExpenseSplits,
+        as: "splits",
+        attributes: ["memberId", "amountOwed"],
+        separate: true,
+      },
+    ],
+  });
+
+  const balances = new Map();
+  members.forEach((member) => {
+    balances.set(member.id, {
+      member_id: member.id,
+      name: member.name,
+      total_paid: 0,
+      total_owed: 0,
+      balance: 0,
+    });
+  });
+
+  expenses.forEach((expense) => {
+    const paidBy = expense.paidBy;
+    const amount = parseFloat(expense.amount);
+
+    if (balances.has(paidBy)) {
+      balances.get(paidBy).total_paid += amount;
+    }
+
+    expense.splits.forEach((split) => {
+      const memberId = split.memberId;
+      const amountOwed = parseFloat(split.amountOwed);
+
+      if (balances.has(memberId)) {
+        balances.get(memberId).total_owed += amountOwed;
+      }
+    });
+  });
+
+  const result = Array.from(balances.values()).map((member) => {
+    member.balance =
+      Math.round((member.total_paid - member.total_owed) * 100) / 100; // Round to 2 decimal places
+    return {
+      member_id: member.member_id,
+      name: member.name,
+      balance: member.balance,
+    };
+  });
+
+  const totalBalance = result.reduce((sum, member) => sum + member.balance, 0);
+  const roundedTotal = Math.round(totalBalance * 100) / 100;
+
+  if (Math.abs(roundedTotal) > 0.01) {
+    throw {
+      status: 500,
+      message: `Balance calculation error: sum of balances (${roundedTotal}) does not equal zero. This indicates a bug in the calculation logic.`,
+    };
+  }
+
+  return result;
 }
 
 module.exports = {
   getGroup,
   createGroupWithMembers,
   createExpenseForGroup,
+  getExpensesForGroup,
+  calculateGroupBalances,
 };

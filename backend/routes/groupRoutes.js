@@ -1,9 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const controller = require("../controllers/groupController");
+const groupcontroller = require("../controllers/groupController");
 
-router.get("/:id", controller.fetchGroup);
-router.post("/", controller.createGroup);
-router.post("/:id/expenses", controller.createExpense);
+router.get("/:id", groupcontroller.fetchGroup);
+router.post("/", groupcontroller.createGroup);
+router.get("/:id/expenses", groupcontroller.fetchExpenses);
+router.get("/:id/balances", groupcontroller.fetchBalances);
+router.post("/:id/expenses", groupcontroller.createExpense);
 
 module.exports = router;

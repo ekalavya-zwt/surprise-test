@@ -3,15 +3,16 @@ const cors = require("cors");
 require("dotenv").config();
 const { sequelize } = require("./models");
 const groupRoutes = require("./routes/groupRoutes");
+const expenseRoutes = require("./routes/expenseRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.set("json spaces", 2);
-
 app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
+
 app.use("/api/groups", groupRoutes);
+app.use("/api/expenses", expenseRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "Welcome to the SplitKaro application!" });
