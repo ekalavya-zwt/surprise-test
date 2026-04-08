@@ -1,6 +1,7 @@
 const {
   getGroup,
   createGroupWithMembers,
+  createExpenseForGroup,
 } = require("../services/groupService");
 
 async function fetchGroup(req, res) {
@@ -63,4 +64,27 @@ async function createGroup(req, res) {
   }
 }
 
-module.exports = { fetchGroup, createGroup };
+async function createExpense(req, res) {
+  try {
+    const groupId = req.params.id;
+    const expenseData = req.body;
+
+    const result = await createExpenseForGroup(groupId, expenseData);
+
+    res.status(201).json({
+      message: "Expense created successfully",
+      expense: result.expense,
+      splits: result.splitsData,
+    });
+  } catch (err) {
+    console.error("Error creating expense:", err);
+
+    if (err && err.status && err.message) {
+      return res.status(err.status).json({ message: err.message });
+    }
+
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+module.exports = { fetchGroup, createGroup, createExpense };

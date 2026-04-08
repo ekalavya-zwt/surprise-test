@@ -11,7 +11,7 @@ app.set("json spaces", 2);
 
 app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
-app.use("/groups", groupRoutes);
+app.use("/api/groups", groupRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "Welcome to the SplitKaro application!" });
