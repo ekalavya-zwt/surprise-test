@@ -5,7 +5,9 @@ const {
   createExpenseForGroup,
   getExpensesForGroup,
   calculateGroupBalances,
-  suggestSettlements,
+  suggestSettlementForGroup,
+  recordSettlementForGroup,
+  getSettlementsForGroup,
 } = require("../services/groupService");
 
 async function fetchGroups(req, res) {
@@ -144,11 +146,53 @@ async function fetchBalances(req, res) {
 async function fetchSettlementSuggestions(req, res) {
   try {
     const groupId = req.params.id;
-    const settlements = await suggestSettlements(groupId);
+    const settlements = await suggestSettlementForGroup(groupId);
 
     res.status(200).json(settlements);
   } catch (err) {
     console.error("Error suggesting settlements:", err);
+
+    if (err && err.status && err.message) {
+      return res.status(err.status).json({ message: err.message });
+    }
+
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+async function recordSettlement(req, res) {
+  try {
+    const groupId = req.params.id;
+    const settlementData = req.body;
+
+    const result = await recordSettlementForGroup(groupId, settlementData);
+
+    res.status(201).json({
+      message: "Settlement recorded successfully",
+      settlement: result,
+    });
+  } catch (err) {
+    console.error("Error recording settlement:", err);
+
+    if (err && err.status && err.message) {
+      return res.status(err.status).json({ message: err.message });
+    }
+
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+async function fetchSettlements(req, res) {
+  try {
+    const groupId = req.params.id;
+    const settlements = await getSettlementsForGroup(groupId);
+
+    res.status(200).json({
+      message: "Settlements fetched successfully",
+      settlements,
+    });
+  } catch (err) {
+    console.error("Error fetching settlements:", err);
 
     if (err && err.status && err.message) {
       return res.status(err.status).json({ message: err.message });
@@ -166,4 +210,6 @@ module.exports = {
   fetchExpenses,
   fetchBalances,
   fetchSettlementSuggestions,
+  recordSettlement,
+  fetchSettlements,
 };

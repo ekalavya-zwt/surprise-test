@@ -5,7 +5,7 @@ import {
   getGroups,
   getGroup,
   getBalances,
-} from "../../services/splitKaroService";
+} from "../services/splitKaroService";
 import useDebounce from "../hooks/useDebounce";
 
 const Dashboard = () => {
@@ -38,10 +38,8 @@ const Dashboard = () => {
         return "bg-blue-100 text-blue-800 px-2 py-1 rounded-full";
       case "exact":
         return "bg-green-100 text-green-800 px-2 py-1 rounded-full";
-      case "percentage":
-        return "bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full";
       default:
-        return "bg-gray-100 text-gray-800 px-2 py-1 rounded-full";
+        return "bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full";
     }
   };
 
@@ -159,7 +157,7 @@ const Dashboard = () => {
         </button>
       </div>
 
-      <div className="mb-4 flex gap-2">
+      <div className="mb-4 flex gap-3">
         <p className="text-sm font-semibold">{totalMembers} Members</p>
         <p className="text-sm font-semibold">
           ₹{totalExpenses.toFixed(2)} Expenses
@@ -167,7 +165,7 @@ const Dashboard = () => {
       </div>
 
       {balances && balances.length > 0 && (
-        <div className={`grid grid-cols-${totalMembers || 4} gap-4`}>
+        <div className="grid grid-cols-4 gap-4">
           {balances.map((bal) => {
             const amount = Number(bal.balance);
             const isOwed = amount > 0;
@@ -202,11 +200,11 @@ const Dashboard = () => {
       )}
 
       <div>
-        <h1 className="mt-10 text-2xl font-bold">
+        <h1 className="mt-4 text-2xl font-bold">
           {group ? group.name : "Select a group to view expenses"}
         </h1>
 
-        <form className="mt-2 flex flex-wrap gap-4">
+        <form className="mt-4 flex flex-wrap gap-4">
           <input
             type="text"
             placeholder="Expense Description"

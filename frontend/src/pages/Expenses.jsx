@@ -5,7 +5,7 @@ import {
   getGroups,
   getGroup,
   deleteExpense,
-} from "../../services/splitKaroService";
+} from "../services/splitKaroService";
 
 const Expenses = () => {
   const [selectedGroupId, setSelectedGroupId] = useState("");
@@ -19,10 +19,8 @@ const Expenses = () => {
         return "bg-blue-100 text-blue-800 px-2 py-1 rounded-full";
       case "exact":
         return "bg-green-100 text-green-800 px-2 py-1 rounded-full";
-      case "percentage":
-        return "bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full";
       default:
-        return "bg-gray-100 text-gray-800 px-2 py-1 rounded-full";
+        return "bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full";
     }
   };
 

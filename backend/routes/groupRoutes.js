@@ -12,5 +12,7 @@ router.get(
   "/:id/settlements/suggest",
   groupcontroller.fetchSettlementSuggestions,
 );
+router.post("/:id/settlements", groupcontroller.recordSettlement);
+router.get("/:id/settlements", groupcontroller.fetchSettlements);
 
 module.exports = router;

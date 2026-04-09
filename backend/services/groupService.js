@@ -261,7 +261,7 @@ async function createExpenseForGroup(groupId, expenseData) {
     await ExpenseSplits.bulkCreate(splitsData, { transaction });
 
     return {
-      expense: expense.toJSON(),
+      expense,
       splits: splitsData,
     };
   });
@@ -315,8 +315,6 @@ async function getExpensesForGroup(groupId) {
     description: expense.description,
     splitType: expense.splitType,
     date: expense.date,
-    createdAt: expense.createdAt,
-    updatedAt: expense.updatedAt,
     splits: expense.splits.map((split) => ({
       id: split.id,
       memberId: split.memberId,
@@ -359,6 +357,11 @@ async function calculateGroupBalances(groupId) {
     ],
   });
 
+  const settlements = await Settlements.findAll({
+    where: { groupId },
+    attributes: ["paidBy", "paidTo", "amount"],
+  });
+
   const balances = new Map();
   members.forEach((member) => {
     balances.set(member.id, {
@@ -366,6 +369,8 @@ async function calculateGroupBalances(groupId) {
       name: member.name,
       total_paid: 0,
       total_owed: 0,
+      settlements_received: 0,
+      settlements_paid: 0,
       balance: 0,
     });
   });
@@ -388,9 +393,29 @@ async function calculateGroupBalances(groupId) {
     });
   });
 
+  settlements.forEach((settlement) => {
+    const paidBy = settlement.paidBy;
+    const paidTo = settlement.paidTo;
+    const amount = parseFloat(settlement.amount);
+
+    if (balances.has(paidBy)) {
+      balances.get(paidBy).settlements_paid += amount;
+    }
+
+    if (balances.has(paidTo)) {
+      balances.get(paidTo).settlements_received += amount;
+    }
+  });
+
   const result = Array.from(balances.values()).map((member) => {
     member.balance =
-      Math.round((member.total_paid - member.total_owed) * 100) / 100;
+      Math.round(
+        (member.total_paid -
+          member.total_owed +
+          member.settlements_received -
+          member.settlements_paid) *
+          100,
+      ) / 100;
     return {
       member_id: member.member_id,
       name: member.name,
@@ -411,7 +436,7 @@ async function calculateGroupBalances(groupId) {
   return result;
 }
 
-async function suggestSettlements(groupId) {
+async function suggestSettlementForGroup(groupId) {
   const balances = await calculateGroupBalances(groupId);
 
   const creditors = balances
@@ -476,6 +501,157 @@ async function suggestSettlements(groupId) {
   return settlements;
 }
 
+async function recordSettlementForGroup(groupId, settlementData) {
+  const { paid_by, paid_to, amount, date } = settlementData;
+
+  if (!paid_by || !paid_to || !amount) {
+    throw {
+      status: 400,
+      message: "paid_by, paid_to, and amount are required",
+    };
+  }
+
+  if (paid_by === paid_to) {
+    throw {
+      status: 400,
+      message: "Cannot record settlement to yourself",
+    };
+  }
+
+  const group = await Groups.findByPk(groupId, {
+    include: {
+      model: Members,
+      as: "members",
+      attributes: ["id", "name"],
+      separate: true,
+      order: [["id", "ASC"]],
+    },
+  });
+
+  if (!group) {
+    throw { status: 404, message: "Group not found" };
+  }
+
+  const members = group.members;
+  if (!members || members.length === 0) {
+    throw {
+      status: 400,
+      message: "Group must have members before recording settlements",
+    };
+  }
+
+  const payerId = Number(paid_by);
+  const payeeId = Number(paid_to);
+
+  if (!members.some((member) => member.id === payerId)) {
+    throw {
+      status: 400,
+      message: "paid_by must be a valid member of the group",
+    };
+  }
+
+  if (!members.some((member) => member.id === payeeId)) {
+    throw {
+      status: 400,
+      message: "paid_to must be a valid member of the group",
+    };
+  }
+
+  const parsedAmount = Math.round(Number(amount) * 100);
+  if (parsedAmount <= 0) {
+    throw { status: 400, message: "Amount must be greater than 0" };
+  }
+
+  const parsedDate = date ? new Date(date) : new Date();
+  if (Number.isNaN(parsedDate.getTime())) {
+    throw { status: 400, message: "Invalid date format" };
+  }
+
+  const balances = await calculateGroupBalances(groupId);
+  const payerBalance = balances.find(
+    (balance) => balance.member_id === payerId,
+  );
+  const payeeBalance = balances.find(
+    (balance) => balance.member_id === payeeId,
+  );
+
+  if (!payerBalance || !payeeBalance) {
+    throw { status: 500, message: "Error calculating balances" };
+  }
+
+  if (payerBalance.balance >= 0) {
+    throw {
+      status: 400,
+      message: `${payerBalance.name} does not owe any money`,
+    };
+  }
+
+  if (payeeBalance.balance <= 0) {
+    throw {
+      status: 400,
+      message: `${payeeBalance.name} is not owed any money`,
+    };
+  }
+
+  const maxAmount = Math.min(
+    Math.abs(payerBalance.balance),
+    payeeBalance.balance,
+  );
+
+  if (parsedAmount / 100 > maxAmount) {
+    throw {
+      status: 400,
+      message: `Amount cannot exceed ₹${maxAmount.toFixed(2)} (what ${payerBalance.name} owes ${payeeBalance.name})`,
+    };
+  }
+
+  const settlement = await Settlements.create({
+    groupId,
+    paidBy: payerId,
+    paidTo: payeeId,
+    amount: (parsedAmount / 100).toFixed(2),
+    date: parsedDate,
+  });
+
+  return settlement;
+}
+
+async function getSettlementsForGroup(groupId) {
+  const group = await Groups.findByPk(groupId);
+  if (!group) {
+    throw { status: 404, message: "Group not found" };
+  }
+
+  const settlements = await Settlements.findAll({
+    where: { groupId },
+    attributes: ["id", "groupId", "paidBy", "paidTo", "amount", "date"],
+    include: [
+      {
+        model: Members,
+        as: "payer",
+        attributes: ["name", "email"],
+      },
+      {
+        model: Members,
+        as: "payee",
+        attributes: ["name", "email"],
+      },
+    ],
+    order: [["id", "ASC"]],
+  });
+
+  return settlements.map((settlement) => ({
+    id: settlement.id,
+    groupId: settlement.groupId,
+    paidBy: settlement.paidBy,
+    paidTo: settlement.paidTo,
+    payer: settlement.payer,
+    payee: settlement.payee,
+    amount: settlement.amount,
+    date: settlement.date,
+  }));
+}
+
 module.exports = {
   getGroups,
   getGroup,
@@ -483,5 +659,7 @@ module.exports = {
   createExpenseForGroup,
   getExpensesForGroup,
   calculateGroupBalances,
-  suggestSettlements,
+  suggestSettlementForGroup,
+  recordSettlementForGroup,
+  getSettlementsForGroup,
 };

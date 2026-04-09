@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const api = axios.create({
+const splitKaroAPI = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   headers: {
     "Content-Type": "application/json",
@@ -8,7 +8,7 @@ const api = axios.create({
   timeout: 10000,
 });
 
-api.interceptors.response.use(
+splitKaroAPI.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
@@ -27,4 +27,4 @@ api.interceptors.response.use(
   },
 );
 
-export default api;
+export default splitKaroAPI;
