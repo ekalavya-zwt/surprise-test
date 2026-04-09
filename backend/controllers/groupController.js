@@ -1,10 +1,22 @@
 const {
+  getGroups,
   getGroup,
   createGroupWithMembers,
   createExpenseForGroup,
   getExpensesForGroup,
   calculateGroupBalances,
+  suggestSettlements,
 } = require("../services/groupService");
+
+async function fetchGroups(req, res) {
+  try {
+    const groups = await getGroups();
+    res.status(200).json(groups);
+  } catch (err) {
+    console.error("Error fetching groups:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
 
 async function fetchGroup(req, res) {
   try {
@@ -129,10 +141,29 @@ async function fetchBalances(req, res) {
   }
 }
 
+async function fetchSettlementSuggestions(req, res) {
+  try {
+    const groupId = req.params.id;
+    const settlements = await suggestSettlements(groupId);
+
+    res.status(200).json(settlements);
+  } catch (err) {
+    console.error("Error suggesting settlements:", err);
+
+    if (err && err.status && err.message) {
+      return res.status(err.status).json({ message: err.message });
+    }
+
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
 module.exports = {
   fetchGroup,
+  fetchGroups,
   createGroup,
   createExpense,
   fetchExpenses,
   fetchBalances,
+  fetchSettlementSuggestions,
 };

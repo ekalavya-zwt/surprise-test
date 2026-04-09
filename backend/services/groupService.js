@@ -3,10 +3,17 @@ const {
   Groups,
   Members,
   ExpenseSplits,
+  Settlements,
   sequelize,
 } = require("../models");
 
 const { splitAmount } = require("../utils/equalSplitAmount");
+
+async function getGroups() {
+  return await Groups.findAll({
+    attributes: ["id", "name", "description"],
+  });
+}
 
 async function getGroup(groupId) {
   return await Groups.findByPk(groupId, {
@@ -268,11 +275,20 @@ async function getExpensesForGroup(groupId) {
 
   const expenses = await Expenses.findAll({
     where: { groupId },
+    attributes: [
+      "id",
+      "groupId",
+      "paidBy",
+      "amount",
+      "description",
+      "splitType",
+      "date",
+    ],
     include: [
       {
         model: Members,
         as: "payer",
-        attributes: ["id", "name", "email"],
+        attributes: ["name", "email"],
       },
       {
         model: ExpenseSplits,
@@ -281,16 +297,13 @@ async function getExpensesForGroup(groupId) {
         include: {
           model: Members,
           as: "member",
-          attributes: ["id", "name", "email"],
+          attributes: ["name", "email"],
         },
         separate: true,
         order: [["memberId", "ASC"]],
       },
     ],
-    order: [
-      ["date", "DESC"],
-      ["id", "DESC"],
-    ],
+    order: [["id", "ASC"]],
   });
 
   return expenses.map((expense) => ({
@@ -377,7 +390,7 @@ async function calculateGroupBalances(groupId) {
 
   const result = Array.from(balances.values()).map((member) => {
     member.balance =
-      Math.round((member.total_paid - member.total_owed) * 100) / 100; // Round to 2 decimal places
+      Math.round((member.total_paid - member.total_owed) * 100) / 100;
     return {
       member_id: member.member_id,
       name: member.name,
@@ -398,10 +411,77 @@ async function calculateGroupBalances(groupId) {
   return result;
 }
 
+async function suggestSettlements(groupId) {
+  const balances = await calculateGroupBalances(groupId);
+
+  const creditors = balances
+    .filter((member) => member.balance > 0)
+    .map((member) => ({
+      ...member,
+      remaining: Math.round(member.balance * 100) / 100,
+    }))
+    .sort((a, b) => b.remaining - a.remaining);
+
+  const debtors = balances
+    .filter((member) => member.balance < 0)
+    .map((member) => ({
+      ...member,
+      remaining: Math.round(member.balance * 100) / 100,
+    }))
+    .sort((a, b) => a.remaining - b.remaining);
+
+  const settlements = [];
+
+  let creditorIndex = 0;
+  let debtorIndex = 0;
+
+  while (creditorIndex < creditors.length && debtorIndex < debtors.length) {
+    const creditor = creditors[creditorIndex];
+    const debtor = debtors[debtorIndex];
+
+    const amount = Math.min(creditor.remaining, Math.abs(debtor.remaining));
+
+    if (amount <= 0) {
+      break;
+    }
+
+    const roundedAmount = Math.round(amount * 100) / 100;
+
+    settlements.push({
+      from: {
+        id: debtor.member_id,
+        name: debtor.name,
+      },
+      to: {
+        id: creditor.member_id,
+        name: creditor.name,
+      },
+      amount: roundedAmount,
+    });
+
+    creditor.remaining =
+      Math.round((creditor.remaining - roundedAmount) * 100) / 100;
+    debtor.remaining =
+      Math.round((debtor.remaining + roundedAmount) * 100) / 100;
+
+    if (Math.abs(creditor.remaining) < 0.01) {
+      creditorIndex += 1;
+    }
+
+    if (Math.abs(debtor.remaining) < 0.01) {
+      debtorIndex += 1;
+    }
+  }
+
+  return settlements;
+}
+
 module.exports = {
+  getGroups,
   getGroup,
   createGroupWithMembers,
   createExpenseForGroup,
   getExpensesForGroup,
   calculateGroupBalances,
+  suggestSettlements,
 };

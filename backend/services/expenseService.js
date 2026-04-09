@@ -3,6 +3,7 @@ const {
   Groups,
   Members,
   ExpenseSplits,
+  Settlements,
   sequelize,
 } = require("../models");
 

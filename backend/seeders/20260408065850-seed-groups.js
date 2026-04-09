@@ -5,7 +5,7 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.bulkInsert("groups", [
       {
-        name: "Trip to Bali",
+        name: "Trip to Bali Expenses",
         description: "Group for managing expenses during our trip to Bali",
         created_at: new Date(),
         updated_at: new Date(),
