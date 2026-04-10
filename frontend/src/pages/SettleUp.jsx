@@ -6,7 +6,6 @@ import {
   getSettlementSuggestions,
   getSettlements,
   createSettlement,
-  deleteSettlement,
 } from "../services/splitKaroService";
 
 const clearInputs = {
@@ -63,25 +62,6 @@ const SettleUp = () => {
     } catch (error) {
       console.error("Error recording settlement:", error);
       alert("Failed to record settlement. Please try again.");
-    }
-  };
-
-  const handleDeleteSettlement = async (settlementId) => {
-    try {
-      await deleteSettlement(settlementId);
-      const updatedSettlements = await getSettlements(selectedGroupId);
-      if (
-        updatedSettlements &&
-        updatedSettlements.settlements &&
-        updatedSettlements.settlements.length > 0
-      ) {
-        setSettlementsData(updatedSettlements);
-      } else {
-        setSettlementsData({ settlements: [] });
-      }
-    } catch (error) {
-      console.error("Error deleting settlement:", error);
-      alert("Failed to delete settlement. Please try again.");
     }
   };
 
@@ -245,7 +225,6 @@ const SettleUp = () => {
                 <th className="border border-gray-300 p-2">Payer</th>
                 <th className="border border-gray-300 p-2">Payee</th>
                 <th className="border border-gray-300 p-2">Amount</th>
-                <th className="border border-gray-300 p-2">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -265,22 +244,6 @@ const SettleUp = () => {
                     </td>
                     <td className="border border-gray-300 p-2">
                       {settlement.amount}
-                    </td>
-                    <td className="border border-gray-300 p-2">
-                      <button
-                        className="cursor-pointer rounded-md bg-red-500 px-2 py-1 text-white hover:bg-red-600"
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              "Are you sure you want to delete this settlement?",
-                            )
-                          ) {
-                            handleDeleteSettlement(settlement.id);
-                          }
-                        }}
-                      >
-                        Delete
-                      </button>
                     </td>
                   </tr>
                 ))
