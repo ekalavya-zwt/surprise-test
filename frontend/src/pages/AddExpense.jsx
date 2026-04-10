@@ -3,18 +3,20 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { getGroup, createExpense } from "../services/splitKaroService";
 
+const clearInputs = {
+  paid_by: "",
+  amount: "",
+  description: "",
+  split_type: "",
+  date: new Date().toISOString().split("T")[0],
+  splits: {},
+};
+
 const AddExpense = () => {
   const { id: groupId } = useParams();
 
   const [group, setGroup] = useState(null);
-  const [inputs, setInputs] = useState({
-    paid_by: "",
-    amount: "",
-    description: "",
-    split_type: "",
-    date: new Date().toISOString().split("T")[0],
-    splits: {},
-  });
+  const [inputs, setInputs] = useState(clearInputs);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -44,6 +46,7 @@ const AddExpense = () => {
   const handleFormSubmit = (e) => {
     e.preventDefault();
     addExpense();
+    setInputs(clearInputs);
   };
 
   useEffect(() => {
