@@ -32,12 +32,13 @@ const Expenses = () => {
     const fetchGroups = async () => {
       try {
         const data = await getGroups();
-        setGroups(data);
         if (data && data.length > 0) {
+          setGroups(data);
           setSelectedGroupId(data[0].id);
         }
       } catch (error) {
         console.error("Error fetching groups:", error);
+        setGroups([]);
       }
     };
 
@@ -46,17 +47,19 @@ const Expenses = () => {
 
   useEffect(() => {
     const fetchExpenses = async () => {
-      if (!selectedGroupId) return;
+      if (!selectedGroupId) {
+        setExpenses([]);
+        return;
+      }
 
       try {
         const data = await getExpenses(selectedGroupId);
-        if (data && data.expenses && data.expenses.length > 0) {
+        if (data && data.expenses) {
           setExpenses(data.expenses);
-        } else {
-          setExpenses([]);
         }
       } catch (error) {
         console.error("Error fetching expenses:", error);
+        setExpenses([]);
       }
     };
 
@@ -65,7 +68,10 @@ const Expenses = () => {
 
   useEffect(() => {
     const fetchGroup = async () => {
-      if (!selectedGroupId) return;
+      if (!selectedGroupId) {
+        setGroup(null);
+        return;
+      }
 
       try {
         const data = await getGroup(selectedGroupId);
@@ -74,6 +80,7 @@ const Expenses = () => {
         }
       } catch (error) {
         console.error("Error fetching group details:", error);
+        setGroup(null);
       }
     };
 
@@ -83,50 +90,59 @@ const Expenses = () => {
   const handleDeleteExpense = async (expenseId) => {
     try {
       await deleteExpense(expenseId);
-      const data = await getExpenses(selectedGroupId);
-      if (data && data.expenses && data.expenses.length > 0) {
-        setExpenses(data.expenses);
+      const updatedExpenses = await getExpenses(selectedGroupId);
+      if (
+        updatedExpenses &&
+        updatedExpenses.expenses &&
+        updatedExpenses.expenses.length > 0
+      ) {
+        setExpenses(updatedExpenses.expenses);
       } else {
         setExpenses([]);
       }
     } catch (error) {
       console.error("Error deleting expense:", error);
+      alert("Failed to delete expense. Please try again.");
     }
   };
 
   return (
     <div className="m-4">
-      <div className="mb-2 flex items-center justify-between gap-4">
-        <label htmlFor="groupSelect">
-          <span className="mr-2 font-semibold">Select Group:</span>
-          <select
-            id="groupSelect"
-            value={selectedGroupId}
-            onChange={handleGroupChange}
-            className="rounded border border-gray-400 p-2"
-          >
-            <option value="" disabled>
-              Select a group
-            </option>
-            {groups && groups.length > 0 ? (
-              groups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))
-            ) : (
-              <option disabled>No groups available</option>
-            )}
-          </select>
+      <h1 className="mb-4 text-3xl font-bold text-gray-800">Expenses</h1>
+      <div className="mb-4">
+        <label
+          htmlFor="groupSelect"
+          className="mb-2 block font-semibold text-gray-700"
+        >
+          Select Group:
         </label>
+        <select
+          id="groupSelect"
+          value={selectedGroupId}
+          onChange={handleGroupChange}
+          className="rounded-lg border border-gray-300 bg-white px-4 py-2"
+        >
+          <option value="" disabled>
+            Select a group
+          </option>
+          {groups && groups.length > 0 ? (
+            groups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.name}
+              </option>
+            ))
+          ) : (
+            <option disabled>No groups available</option>
+          )}
+        </select>
       </div>
 
       <div>
-        <h1 className="mt-4 text-2xl font-bold">
+        <h2 className="mb-2 text-2xl font-semibold text-gray-800">
           {group ? group.name : "Select a group to view expenses"}
-        </h1>
+        </h2>
 
-        <table className="mt-4 border-collapse border border-gray-400">
+        <table className="w-full border-collapse border border-gray-400 text-center">
           <thead>
             <tr className="bg-gray-200">
               <th className="border border-gray-300 p-2">Date</th>

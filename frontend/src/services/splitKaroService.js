@@ -30,9 +30,9 @@ const createGroup = async (groupData) => {
   }
 };
 
-const createExpense = async (expenseData) => {
+const createExpense = async (groupId, expenseData) => {
   try {
-    const response = await api.post("/expenses", expenseData);
+    const response = await api.post(`/groups/${groupId}/expenses`, expenseData);
     return response.data;
   } catch (error) {
     console.error("Error adding expense:", error);
@@ -69,6 +69,39 @@ const getBalances = async (groupId) => {
   }
 };
 
+const getSettlementSuggestions = async (groupId) => {
+  try {
+    const response = await api.get(`/groups/${groupId}/settlements/suggest`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching settlement suggestions:", error);
+    throw error;
+  }
+};
+
+const getSettlements = async (groupId) => {
+  try {
+    const response = await api.get(`/groups/${groupId}/settlements`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching settlements:", error);
+    throw error;
+  }
+};
+
+const createSettlement = async (groupId, settlementData) => {
+  try {
+    const response = await api.post(
+      `/groups/${groupId}/settlements`,
+      settlementData,
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating settlement:", error);
+    throw error;
+  }
+};
+
 export {
   getGroups,
   getGroup,
@@ -77,4 +110,7 @@ export {
   getExpenses,
   deleteExpense,
   getBalances,
+  getSettlementSuggestions,
+  getSettlements,
+  createSettlement,
 };
