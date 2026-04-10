@@ -411,8 +411,8 @@ async function calculateGroupBalances(groupId) {
     member.balance =
       Math.round(
         (member.total_paid -
-          member.total_owed +
-          member.settlements_received -
+          member.total_owed -
+          member.settlements_received +
           member.settlements_paid) *
           100,
       ) / 100;
@@ -652,6 +652,21 @@ async function getSettlementsForGroup(groupId) {
   }));
 }
 
+async function deleteSettlement(settlementId) {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const settlement = await Settlements.findByPk(settlementId, {
+      transaction,
+    });
+    await settlement.destroy({ transaction });
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+}
+
 module.exports = {
   getGroups,
   getGroup,
@@ -662,4 +677,5 @@ module.exports = {
   suggestSettlementForGroup,
   recordSettlementForGroup,
   getSettlementsForGroup,
+  deleteSettlement,
 };

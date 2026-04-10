@@ -8,6 +8,7 @@ const {
   suggestSettlementForGroup,
   recordSettlementForGroup,
   getSettlementsForGroup,
+  deleteSettlement,
 } = require("../services/groupService");
 
 async function fetchGroups(req, res) {
@@ -202,6 +203,17 @@ async function fetchSettlements(req, res) {
   }
 }
 
+async function removeSettlement(req, res) {
+  try {
+    const settlementId = req.params.id;
+    await deleteSettlement(settlementId);
+    res.status(200).json({ message: "Settlement deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting settlement:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
 module.exports = {
   fetchGroup,
   fetchGroups,
@@ -212,4 +224,5 @@ module.exports = {
   fetchSettlementSuggestions,
   recordSettlement,
   fetchSettlements,
+  removeSettlement,
 };
