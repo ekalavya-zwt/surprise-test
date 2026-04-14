@@ -593,15 +593,15 @@ async function recordSettlementForGroup(groupId, settlementData) {
     };
   }
 
-  const maxAmount = Math.min(
+  const maxAmountPayable = Math.min(
     Math.abs(payerBalance.balance),
     payeeBalance.balance,
   );
 
-  if (parsedAmount / 100 > maxAmount) {
+  if (parsedAmount / 100 > maxAmountPayable) {
     throw {
       status: 400,
-      message: `Amount cannot exceed ₹${maxAmount.toFixed(2)} (what ${payerBalance.name} owes ${payeeBalance.name})`,
+      message: `Amount cannot exceed ₹${maxAmountPayable.toFixed(2)} (what ${payerBalance.name} owes ${payeeBalance.name})`,
     };
   }
 
@@ -652,21 +652,6 @@ async function getSettlementsForGroup(groupId) {
   }));
 }
 
-async function deleteSettlement(settlementId) {
-  const transaction = await sequelize.transaction();
-
-  try {
-    const settlement = await Settlements.findByPk(settlementId, {
-      transaction,
-    });
-    await settlement.destroy({ transaction });
-    await transaction.commit();
-  } catch (error) {
-    await transaction.rollback();
-    throw error;
-  }
-}
-
 module.exports = {
   getGroups,
   getGroup,
@@ -677,5 +662,4 @@ module.exports = {
   suggestSettlementForGroup,
   recordSettlementForGroup,
   getSettlementsForGroup,
-  deleteSettlement,
 };

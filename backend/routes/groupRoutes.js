@@ -14,6 +14,5 @@ router.get(
 );
 router.post("/:id/settlements", groupcontroller.recordSettlement);
 router.get("/:id/settlements", groupcontroller.fetchSettlements);
-router.delete("/settlements/:id", groupcontroller.removeSettlement);
 
 module.exports = router;
