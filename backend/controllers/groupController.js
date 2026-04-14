@@ -23,7 +23,8 @@ async function fetchGroups(req, res) {
 
 async function fetchGroup(req, res) {
   try {
-    const group = await getGroup(req.params.id);
+    const groupId = req.params.id;
+    const group = await getGroup(groupId);
 
     if (!group) {
       return res.status(404).json({ message: "Group not found" });

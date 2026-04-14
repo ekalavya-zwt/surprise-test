@@ -190,7 +190,7 @@ const Dashboard = () => {
           <option value="" disabled>
             Select a group
           </option>
-          {groups && groups.length > 0 ? (
+          {Array.isArray(groups) && groups.length > 0 ? (
             groups.map((group) => (
               <option key={group.id} value={group.id}>
                 {group.name}

@@ -377,7 +377,7 @@ async function calculateGroupBalances(groupId) {
 
   expenses.forEach((expense) => {
     const paidBy = expense.paidBy;
-    const amount = parseFloat(expense.amount);
+    const amount = Number(expense.amount);
 
     if (balances.has(paidBy)) {
       balances.get(paidBy).total_paid += amount;
@@ -385,7 +385,7 @@ async function calculateGroupBalances(groupId) {
 
     expense.splits.forEach((split) => {
       const memberId = split.memberId;
-      const amountOwed = parseFloat(split.amountOwed);
+      const amountOwed = Number(split.amountOwed);
 
       if (balances.has(memberId)) {
         balances.get(memberId).total_owed += amountOwed;
@@ -396,7 +396,7 @@ async function calculateGroupBalances(groupId) {
   settlements.forEach((settlement) => {
     const paidBy = settlement.paidBy;
     const paidTo = settlement.paidTo;
-    const amount = parseFloat(settlement.amount);
+    const amount = Number(settlement.amount);
 
     if (balances.has(paidBy)) {
       balances.get(paidBy).settlements_paid += amount;
@@ -429,7 +429,7 @@ async function calculateGroupBalances(groupId) {
   if (Math.abs(roundedTotal) > 0.01) {
     throw {
       status: 500,
-      message: `Balance calculation error: sum of balances (${roundedTotal}) does not equal zero. This indicates a bug in the calculation logic.`,
+      message: `Sum of balances (${roundedTotal}) does not equal zero. This indicates a bug in the calculation logic.`,
     };
   }
 
