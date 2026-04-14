@@ -1,13 +1,12 @@
 const express = require("express");
 const cors = require("cors");
-require("dotenv").config();
 
+const { PORT } = require("./config/config");
 const { sequelize } = require("./models");
 const groupRoutes = require("./routes/groupRoutes");
 const expenseRoutes = require("./routes/expenseRoutes");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
