@@ -66,6 +66,8 @@ const Dashboard = () => {
         if (data && data.length > 0) {
           setGroups(data);
           setSelectedGroupId(data[0].id);
+        } else {
+          setGroups([]);
         }
       } catch (error) {
         console.error("Error fetching groups:", error);
@@ -87,6 +89,8 @@ const Dashboard = () => {
         const data = await getExpenses(selectedGroupId);
         if (data && data.expenses) {
           setExpenses(data.expenses);
+        } else {
+          setExpenses([]);
         }
       } catch (error) {
         console.error("Error fetching expenses:", error);
@@ -108,6 +112,8 @@ const Dashboard = () => {
         const data = await getGroup(selectedGroupId);
         if (data) {
           setGroup(data);
+        } else {
+          setGroup(null);
         }
       } catch (error) {
         console.error("Error fetching group details:", error);
@@ -129,6 +135,8 @@ const Dashboard = () => {
         const data = await getBalances(selectedGroupId);
         if (data && data.balances) {
           setBalances(data.balances);
+        } else {
+          setBalances([]);
         }
       } catch (error) {
         console.error("Error fetching balances:", error);
@@ -149,6 +157,8 @@ const Dashboard = () => {
         const data = await getSettlementSuggestions(selectedGroupId);
         if (data && data.length > 0) {
           setSuggestions(data);
+        } else {
+          setSuggestions([]);
         }
       } catch (error) {
         console.error("Error fetching settlement suggestions:", error);

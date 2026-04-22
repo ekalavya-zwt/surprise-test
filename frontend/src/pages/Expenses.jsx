@@ -35,6 +35,8 @@ const Expenses = () => {
         if (data && data.length > 0) {
           setGroups(data);
           setSelectedGroupId(data[0].id);
+        } else {
+          setGroups([]);
         }
       } catch (error) {
         console.error("Error fetching groups:", error);
@@ -56,6 +58,8 @@ const Expenses = () => {
         const data = await getExpenses(selectedGroupId);
         if (data && data.expenses) {
           setExpenses(data.expenses);
+        } else {
+          setExpenses([]);
         }
       } catch (error) {
         console.error("Error fetching expenses:", error);
@@ -77,6 +81,8 @@ const Expenses = () => {
         const data = await getGroup(selectedGroupId);
         if (data) {
           setGroup(data);
+        } else {
+          setGroup(null);
         }
       } catch (error) {
         console.error("Error fetching group details:", error);

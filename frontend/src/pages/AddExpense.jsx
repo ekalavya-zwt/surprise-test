@@ -60,6 +60,8 @@ const AddExpense = () => {
         const data = await getGroup(groupId);
         if (data) {
           setGroup(data);
+        } else {
+          setGroup(null);
         }
       } catch (error) {
         console.error("Error fetching group details:", error);

@@ -54,7 +54,11 @@ const SettleUp = () => {
         setSuggestions([]);
       }
       const updatedSettlements = await getSettlements(selectedGroupId);
-      if (updatedSettlements && updatedSettlements.settlements) {
+      if (
+        updatedSettlements &&
+        updatedSettlements.settlements &&
+        updatedSettlements.settlements.length > 0
+      ) {
         setSettlementsData(updatedSettlements);
       } else {
         setSettlementsData({ settlements: [] });
@@ -72,6 +76,8 @@ const SettleUp = () => {
         if (data && data.length > 0) {
           setGroups(data);
           setSelectedGroupId(data[0].id);
+        } else {
+          setGroups([]);
         }
       } catch (error) {
         console.error("Error fetching groups:", error);
@@ -92,6 +98,8 @@ const SettleUp = () => {
         const data = await getSettlementSuggestions(selectedGroupId);
         if (data && data.length > 0) {
           setSuggestions(data);
+        } else {
+          setSuggestions([]);
         }
       } catch (error) {
         console.error("Error fetching settlement suggestions:", error);
@@ -112,6 +120,8 @@ const SettleUp = () => {
         const data = await getSettlements(selectedGroupId);
         if (data && data.settlements && data.settlements.length > 0) {
           setSettlementsData(data);
+        } else {
+          setSettlementsData({ settlements: [] });
         }
       } catch (error) {
         console.error("Error fetching settlements:", error);
@@ -133,6 +143,8 @@ const SettleUp = () => {
         const data = await getGroup(selectedGroupId);
         if (data) {
           setGroup(data);
+        } else {
+          setGroup(null);
         }
       } catch (error) {
         console.error("Error fetching group details:", error);
